@@ -42,7 +42,7 @@ button{cursor:pointer}
 .simplePage{padding:18px;min-height:680px}.twoCol{display:grid;grid-template-columns:1fr 1fr;gap:14px}.card{background:#0c1c29;border:1px solid var(--line);border-radius:18px;padding:15px}.card h2{margin-top:0}
 .list{list-style:none;padding:0;margin:0}.list li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff0d}.list li:last-child{border-bottom:0}.list input[type=checkbox]{width:20px;height:20px}
 .row{display:flex;gap:8px;margin-top:10px}.row input{flex:1;min-width:0}
-.calendarGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}.day{background:#0f2232;border:1px solid #213d52;border-radius:12px;min-height:86px;padding:8px}.day b{display:block}.eventChip{font-size:11px;background:#173a57;border-radius:8px;padding:4px 6px;margin-top:5px}
+.calendarGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px}.day{background:#0f2232;border:1px solid #213d52;border-radius:12px;min-height:86px;padding:8px;cursor:pointer;transition:.15s ease;user-select:none}.day:hover{border-color:#3f7da9;background:#12304a}.day.selected{outline:2px solid var(--blue);background:#123b62}.day.today b{color:#73c2ff}.day b{display:block}.eventChip{font-size:11px;background:#173a57;border-radius:8px;padding:4px 6px;margin-top:5px;cursor:pointer}.eventChip:hover{background:#20527b}.eventChip.editing{outline:1px solid var(--amber)}.calendarSelected{margin:10px 0 2px;padding:10px 12px;background:#0d2233;border:1px solid #28465c;border-radius:12px;color:#dce9f2}
 .notesGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.noteCard{background:#142638;border:1px solid #28465c;border-radius:16px;padding:12px;min-height:140px}.noteCard textarea{width:100%;height:100px;background:transparent;border:0;color:white;resize:none;outline:none}
 #drawCanvas{display:block;width:100%;height:520px;background:white;border-radius:18px;touch-action:none}.drawToolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
 .photoGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.photoGrid img{width:100%;height:190px;object-fit:cover;border-radius:16px;border:1px solid var(--line)}
@@ -209,7 +209,8 @@ button{cursor:pointer}
 
     <section id="calendar" class="view page"><div class="simplePage">
       <h1>🗓️ Kalendář</h1>
-      <div class="row"><input id="eventTime" class="formInput" type="time"><input id="eventText" class="formInput" placeholder="Událost"><button class="btn primary" onclick="addEvent()">Přidat</button></div>
+      <div id="selectedDateLabel" class="calendarSelected">Vybraný den</div>
+      <div class="row"><input id="eventTime" class="formInput" type="time"><input id="eventText" class="formInput" placeholder="Událost"><button id="eventSaveBtn" class="btn primary" onclick="addEvent()">Přidat</button><button id="eventDeleteBtn" class="btn danger" style="display:none" onclick="deleteSelectedEvent()">Smazat</button></div>
       <div style="height:14px"></div><div id="calendarGrid" class="calendarGrid"></div>
     </div></section>
 
@@ -441,7 +442,16 @@ const recipes=[
 }
 ]
 
-let events=load("events",[{time:"16:00",text:"Trénink Ríša"},{time:"18:00",text:"Nákup"}]);
+function localDateKey(d=new Date()){
+ const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");
+ return `${y}-${m}-${day}`;
+}
+function newEventId(){return "e"+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+const _todayKey=localDateKey();
+let events=load("events",[{time:"16:00",text:"Trénink Ríša"},{time:"18:00",text:"Nákup"}]).map(e=>({...e,date:e.date||_todayKey,id:e.id||newEventId()}));
+store("events",events);
+let selectedDate=_todayKey;
+let editingEventId=null;
 let tasks=load("tasks2",[{text:"Vyvenčit psa",done:false},{text:"Zalít květiny",done:false},{text:"Připravit svačiny",done:true}]);
 let notes=load("notes2",[{title:"Nákup",text:"Mléko, chléb, ovoce"},{title:"Víkend",text:"Výlet a oběd s rodinou"}]);
 
@@ -481,8 +491,9 @@ async function loadWeather(){
 loadWeather();setInterval(loadWeather,15*60*1000);
 
 function renderToday(){
- todayList.innerHTML=events.slice(0,3).map(e=>`<div><b>${e.time}</b>${e.text}</div>`).join("");
- homeToday.innerHTML=events.map(e=>`<div style="padding:8px 0;border-bottom:1px solid #ffffff10"><b>${e.time}</b> &nbsp; ${e.text}</div>`).join("");
+ const todayEvents=events.filter(e=>e.date===localDateKey()).sort((a,b)=>a.time.localeCompare(b.time));
+ todayList.innerHTML=todayEvents.slice(0,3).map(e=>`<div><b>${e.time}</b>${e.text}</div>`).join("")||'<div class="sub">Dnes bez událostí</div>';
+ homeToday.innerHTML=todayEvents.map(e=>`<div style="padding:8px 0;border-bottom:1px solid #ffffff10"><b>${e.time}</b> &nbsp; ${e.text}</div>`).join("")||'<div class="sub">Dnes bez událostí</div>';
 }
 function saveQuick(v){localStorage.setItem("quickNote",v);if(quickNote.value!==v)quickNote.value=v}
 quickNote.value=localStorage.getItem("quickNote")||"Všechno jde :)";
@@ -669,11 +680,42 @@ function renderRecipesNoDetail(){
  recipeGrid.innerHTML=list.map(r=>`<div class="recipeCard ${r.id===selectedRecipe?"selected":""}" onclick="openRecipe('${r.id}')"><img src="${r.img}"><button class="fav" onclick="event.stopPropagation();toggleFav('${r.id}')">${favs.includes(r.id)?"♥":"♡"}</button><div class="recipeCardBody"><strong>${r.name}</strong><div class="recipeMeta"><span>◷ ${r.time} min</span><span>♨ ${r.diff}</span><span>🍽 ${r.serv}</span></div></div></div>`).join("");
 }
 
-function addEvent(){const t=eventTime.value||"12:00",x=eventText.value.trim();if(!x)return;events.push({time:t,text:x});events.sort((a,b)=>a.time.localeCompare(b.time));store("events",events);eventText.value="";renderToday();renderCalendar()}
+function formatSelectedDate(dateKey){
+ const [y,m,d]=dateKey.split("-").map(Number);
+ return new Date(y,m-1,d).toLocaleDateString("cs-CZ",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+}
+function resetEventEditor(){
+ editingEventId=null;eventText.value="";eventSaveBtn.textContent="Přidat";eventDeleteBtn.style.display="none";
+}
+function selectCalendarDay(dateKey){
+ selectedDate=dateKey;resetEventEditor();renderCalendar();eventText.focus();
+}
+function editCalendarEvent(id,ev){
+ ev?.stopPropagation();const e=events.find(x=>x.id===id);if(!e)return;
+ selectedDate=e.date;editingEventId=id;eventTime.value=e.time;eventText.value=e.text;eventSaveBtn.textContent="Uložit";eventDeleteBtn.style.display="inline-block";renderCalendar();eventText.focus();
+}
+function addEvent(){
+ const t=eventTime.value||"12:00",x=eventText.value.trim();if(!x)return;
+ if(editingEventId){const e=events.find(x=>x.id===editingEventId);if(e){e.time=t;e.text=x;e.date=selectedDate}}
+ else events.push({id:newEventId(),date:selectedDate,time:t,text:x});
+ events.sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));store("events",events);resetEventEditor();renderToday();renderCalendar();
+}
+function deleteSelectedEvent(){
+ if(!editingEventId)return;events=events.filter(e=>e.id!==editingEventId);store("events",events);resetEventEditor();renderToday();renderCalendar();
+}
 function renderCalendar(){
- const d=new Date(),y=d.getFullYear(),m=d.getMonth(),days=new Date(y,m+1,0).getDate();
+ const now=new Date(),y=now.getFullYear(),m=now.getMonth(),days=new Date(y,m+1,0).getDate(),today=localDateKey(now);
+ if(!selectedDate.startsWith(`${y}-${String(m+1).padStart(2,"0")}-`)) selectedDate=today;
+ selectedDateLabel.textContent="Vybraný den: "+formatSelectedDate(selectedDate);
  calendarGrid.innerHTML="";
- for(let i=1;i<=days;i++){const el=document.createElement("div");el.className="day";el.innerHTML=`<b>${i}.</b>${i===d.getDate()?events.map(e=>`<div class="eventChip">${e.time} ${e.text}</div>`).join(""):""}`;calendarGrid.append(el)}
+ for(let i=1;i<=days;i++){
+  const key=`${y}-${String(m+1).padStart(2,"0")}-${String(i).padStart(2,"0")}`;
+  const dayEvents=events.filter(e=>e.date===key).sort((a,b)=>a.time.localeCompare(b.time));
+  const el=document.createElement("div");el.className="day"+(key===selectedDate?" selected":"")+(key===today?" today":"");
+  el.onclick=()=>selectCalendarDay(key);
+  el.innerHTML=`<b>${i}.</b>${dayEvents.map(e=>`<div class="eventChip ${e.id===editingEventId?"editing":""}" onclick="editCalendarEvent('${e.id}',event)">${e.time} ${e.text}</div>`).join("")}`;
+  calendarGrid.append(el);
+ }
 }
 function addNote(){const t=newNoteTitle.value.trim()||"Poznámka";notes.push({title:t,text:""});store("notes2",notes);newNoteTitle.value="";renderNotes()}
 function renderNotes(){notesGrid.innerHTML=notes.map((n,i)=>`<div class="noteCard"><b>${n.title}</b><textarea oninput="updateNote(${i},this.value)">${n.text}</textarea></div>`).join("")}

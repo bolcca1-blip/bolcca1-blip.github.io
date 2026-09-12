@@ -1,4 +1,4 @@
-const CACHE="domaci-panel-v6";
+const CACHE="domaci-panel-v7-calendar";
 const SHELL=["./","./index.html","./manifest.json","./icon-192.png","./icon-512.png"];
 
 self.addEventListener("install", event=>{
