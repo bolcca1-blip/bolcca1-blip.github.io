@@ -1,4 +1,4 @@
-const CACHE="domaci-panel-v12-recipe-image-fix";
+const CACHE="domaci-panel-v13-pwa-fullscreen";
 const SHELL=["./","./index.html","./manifest.json","./icon-192.png","./icon-512.png"];
 
 self.addEventListener("install", event=>{

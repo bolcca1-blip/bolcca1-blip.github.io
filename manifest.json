@@ -4,10 +4,10 @@
   "description": "Rodinný multimediální dashboard pro Samsung Galaxy Tab S10 FE.",
   "start_url": "./",
   "scope": "./",
-  "display": "standalone",
+  "display": "fullscreen",
   "display_override": [
-    "standalone",
-    "fullscreen"
+    "fullscreen",
+    "standalone"
   ],
   "orientation": "portrait",
   "background_color": "#07131e",

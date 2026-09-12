@@ -120,6 +120,9 @@ button{cursor:pointer}
 #installPwaBtn{display:none}
 
 </style>
+
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 </head>
 <body>
 <div class="shell">
@@ -685,7 +688,7 @@ function renderRecipes(){
   if(["main","soup","dessert"].includes(currentFilter))return r.cat===currentFilter;
   return true;
  });
- recipeGrid.innerHTML=list.map(r=>`<div class="recipeCard ${r.id===selectedRecipe?"selected":""}" onclick="openRecipe('${r.id}')"><img src="${r.img}"><button class="fav" onclick="event.stopPropagation();toggleFav('${r.id}')">${favs.includes(r.id)?"♥":"♡"}</button><div class="recipeCardBody"><strong>${r.name}</strong><div class="recipeMeta"><span>◷ ${r.time} min</span><span>♨ ${r.diff}</span><span>🍽 ${r.serv}</span></div></div></div>`).join("")||'<div class="card"><b>Ve vestavěné kuchařce nic není.</b><div class="sub" style="margin:6px 0 10px">Zkus kompletní databázi Recepty.cz.</div><button class="btn primary" onclick="searchRecipeWeb()">🔎 Hledat na Recepty.cz</button></div>';
+ recipeGrid.innerHTML=list.map(r=>`<div class="recipeCard ${r.id===selectedRecipe?"selected":""}" onclick="openRecipe('${r.id}')"><img src="${safeRecipeImage(r.img)}" onerror="recipeImageFallback(this)"><button class="fav" onclick="event.stopPropagation();toggleFav('${r.id}')">${favs.includes(r.id)?"♥":"♡"}</button><div class="recipeCardBody"><strong>${r.name}</strong><div class="recipeMeta"><span>◷ ${r.time} min</span><span>♨ ${r.diff}</span><span>🍽 ${r.serv}</span></div></div></div>`).join("")||'<div class="card"><b>Ve vestavěné kuchařce nic není.</b><div class="sub" style="margin:6px 0 10px">Zkus kompletní databázi Recepty.cz.</div><button class="btn primary" onclick="searchRecipeWeb()">🔎 Hledat na Recepty.cz</button></div>';
  if(!recipes.find(r=>r.id===selectedRecipe)||!list.find(r=>r.id===selectedRecipe)) selectedRecipe=list[0]?.id||selectedRecipe;
  openRecipe(selectedRecipe,false);
 }
@@ -697,7 +700,7 @@ function openRecipe(id,rerender=true){
 <h2>${r.name}</h2>
 <div class="detailMeta"><span>⏱ Celkem ${r.time} min</span><span>🔪 Příprava ${r.prep||0} min</span><span>♨ ${r.diff}</span><span>🍽 ${r.serv} porce</span></div>
 ${r.kcal?`<div class="sub" style="margin-bottom:10px">${r.kcal}</div>`:""}
-<img class="detailHero" src="${r.img}" alt="${r.name}" onerror="this.onerror=null;this.style.display='none'">
+<img class="detailHero" src="${r.hero||r.img}" onerror="recipeImageFallback(this)">
 <div class="detailCols">
   <div>
     <h3>Suroviny</h3>
@@ -718,7 +721,7 @@ function renderRecipesNoDetail(){
  // full rerender keeps filtering/fav state and then restores detail via guarded flag
  const q=recipeSearch.value.toLowerCase().trim(); const favs=load("recipeFavs5",[]);
  const list=recipes.filter(r=>{const match=(r.name+" "+r.tags+" "+(r.ingGroups||[]).flatMap(g=>g.items).join(" ")).toLowerCase().includes(q);if(!match)return false;if(currentFilter==="fav")return favs.includes(r.id);if(currentFilter==="quick")return r.time<=30;if(["main","soup","dessert"].includes(currentFilter))return r.cat===currentFilter;return true;});
- recipeGrid.innerHTML=list.map(r=>`<div class="recipeCard ${r.id===selectedRecipe?"selected":""}" onclick="openRecipe('${r.id}')"><img src="${r.img}"><button class="fav" onclick="event.stopPropagation();toggleFav('${r.id}')">${favs.includes(r.id)?"♥":"♡"}</button><div class="recipeCardBody"><strong>${r.name}</strong><div class="recipeMeta"><span>◷ ${r.time} min</span><span>♨ ${r.diff}</span><span>🍽 ${r.serv}</span></div></div></div>`).join("");
+ recipeGrid.innerHTML=list.map(r=>`<div class="recipeCard ${r.id===selectedRecipe?"selected":""}" onclick="openRecipe('${r.id}')"><img src="${safeRecipeImage(r.img)}" onerror="recipeImageFallback(this)"><button class="fav" onclick="event.stopPropagation();toggleFav('${r.id}')">${favs.includes(r.id)?"♥":"♡"}</button><div class="recipeCardBody"><strong>${r.name}</strong><div class="recipeMeta"><span>◷ ${r.time} min</span><span>♨ ${r.diff}</span><span>🍽 ${r.serv}</span></div></div></div>`).join("");
 }
 
 function formatSelectedDate(dateKey){
@@ -980,6 +983,37 @@ function refreshSharedDrawing(){
  }
 }
 document.addEventListener("click",()=>setTimeout(refreshSharedDrawing,60));
+
+function safeRecipeImage(src){
+  if(src) return src;
+  return "data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700"><rect width="100%" height="100%" fill="#102536"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#9fb0bf" font-family="Arial" font-size="42">Obrázek receptu není dostupný</text></svg>'
+  );
+}
+function recipeImageFallback(img){
+  img.onerror=null;
+  img.src=safeRecipeImage("");
+}
+
+// PWA display-mode / wake resume helper
+function isInstalledPwaMode(){
+  return window.matchMedia("(display-mode: fullscreen)").matches ||
+         window.matchMedia("(display-mode: standalone)").matches ||
+         window.navigator.standalone === true;
+}
+function refreshAfterWake(){
+  // Redraw dynamic widgets after Android wakes/resumes the app.
+  try{ if(typeof renderClock==="function") renderClock(); }catch(e){}
+  try{ if(typeof renderCalendar==="function") renderCalendar(); }catch(e){}
+  try{ if(typeof renderToday==="function") renderToday(); }catch(e){}
+  try{ if(typeof refreshSharedDrawing==="function") refreshSharedDrawing(); }catch(e){}
+}
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible"){
+    setTimeout(refreshAfterWake,120);
+  }
+});
+window.addEventListener("pageshow",()=>setTimeout(refreshAfterWake,120));
 </script>
 </body>
 </html>
