@@ -197,12 +197,16 @@ button{cursor:pointer}
       <div class="card homeDrawCard">
         <h2>🖊️ Kreslení</h2>
         <div class="homeDrawToolbar">
-          <button id="homePenBtn" class="btn active" onclick="setHomeDrawTool('pen')">Tužka</button>
-          <button id="homeEraserBtn" class="btn" onclick="setHomeDrawTool('eraser')">Guma</button>
+          <button id="homePenBtn" class="btn active" onclick="setHomeDrawTool('pen')">✏️ Tužka</button>
+          <button id="homeEraserBtn" class="btn" onclick="setHomeDrawTool('eraser')">🧽 Guma</button>
+          <button id="homeRainbowBtn" class="btn" onclick="setHomeDrawTool('rainbow')">🌈 Duha</button>
+          <button id="homeNeonBtn" class="btn" onclick="setHomeDrawTool('neon')">✨ Neon</button>
+          <button id="homeSprayBtn" class="btn" onclick="setHomeDrawTool('spray')">🎨 Sprej</button>
           <input id="homeDrawColor" type="color" value="#111111" title="Barva">
           <label class="sub">Tloušťka</label>
           <input id="homeDrawSize" type="range" min="1" max="30" value="5">
           <button class="btn" onclick="undoHomeDraw()">↶ Zpět</button>
+          <button class="btn" onclick="downloadHomeDraw()">💾 Uložit</button>
           <button class="btn danger" onclick="clearHomeDraw()">Vymazat</button>
           <button class="btn" onclick="showView('draw')">Otevřít velké kreslení</button>
         </div>
@@ -299,6 +303,14 @@ button{cursor:pointer}
 </div>
 
 <script>
+try{
+ if(!localStorage.getItem("sharedDrawV1")){
+  const oldLarge=localStorage.getItem("drawV5");
+  const oldHome=localStorage.getItem("homeDrawV59");
+  if(oldLarge||oldHome)localStorage.setItem("sharedDrawV1",oldLarge||oldHome);
+ }
+}catch(e){}
+
 const $=id=>document.getElementById(id);
 const store=(k,v)=>localStorage.setItem(k,JSON.stringify(v));
 const load=(k,d)=>{try{const x=JSON.parse(localStorage.getItem(k));return x??d}catch(e){return d}};
@@ -860,9 +872,15 @@ function initHomeCanvas(){
  hdc.onpointerup=()=>{hdrawing=false;saveHomeCanvas()};hdc.onpointercancel=()=>{hdrawing=false;saveHomeCanvas()};
 }
 function homePos(e){const r=hdc.getBoundingClientRect();return{x:(e.clientX-r.left)*(hdc.width/r.width),y:(e.clientY-r.top)*(hdc.height/r.height)}}
-function resizeHomeCanvas(){if(!hdc)return;const r=hdc.getBoundingClientRect();if(!r.width)return;const old=localStorage.getItem("homeDrawV59");hdc.width=Math.max(1,Math.round(r.width));hdc.height=Math.max(1,Math.round(r.height));hctx.fillStyle="#fff";hctx.fillRect(0,0,hdc.width,hdc.height);if(old){const im=new Image();im.onload=()=>hctx.drawImage(im,0,0,hdc.width,hdc.height);im.src=old}}
+function resizeHomeCanvas(){if(!hdc)return;const r=hdc.getBoundingClientRect();if(!r.width)return;const old=localStorage.getItem("sharedDrawV1");hdc.width=Math.max(1,Math.round(r.width));hdc.height=Math.max(1,Math.round(r.height));hctx.fillStyle="#fff";hctx.fillRect(0,0,hdc.width,hdc.height);if(old){const im=new Image();im.onload=()=>hctx.drawImage(im,0,0,hdc.width,hdc.height);im.src=old}}
 function setHomeDrawTool(t){hdrawTool=t;setActiveButtons("home",t)}
-function saveHomeCanvas(){try{localStorage.setItem("homeDrawV59",hdc.toDataURL())}catch(e){}}
+function saveHomeCanvas(){
+ try{
+  const data=hdc.toDataURL();
+  localStorage.setItem("sharedDrawV1",data);
+  if(dc&&ctx){const im=new Image();im.onload=()=>{ctx.fillStyle="#fff";ctx.fillRect(0,0,dc.width,dc.height);ctx.drawImage(im,0,0,dc.width,dc.height)};im.src=data}
+ }catch(e){}
+}
 function clearHomeDraw(){if(!hdc)return;hundo.push(hdc.toDataURL());hctx.fillStyle="#fff";hctx.fillRect(0,0,hdc.width,hdc.height);saveHomeCanvas()}
 function undoHomeDraw(){const x=hundo.pop();if(!x||!hdc)return;const im=new Image();im.onload=()=>{hctx.fillStyle="#fff";hctx.fillRect(0,0,hdc.width,hdc.height);hctx.drawImage(im,0,0,hdc.width,hdc.height);saveHomeCanvas()};im.src=x}
 function downloadHomeDraw(){if(!hdc)return;const a=document.createElement("a");a.download="moje-kresba.png";a.href=hdc.toDataURL("image/png");a.click()}
@@ -876,10 +894,16 @@ function initCanvas(){
  dc.onpointerup=()=>{drawing=false;saveCanvas()};dc.onpointercancel=()=>{drawing=false;saveCanvas()};
 }
 function pos(e){const r=dc.getBoundingClientRect();return{x:(e.clientX-r.left)*(dc.width/r.width),y:(e.clientY-r.top)*(dc.height/r.height)}}
-function resizeCanvas(){if(!dc)return;const r=dc.getBoundingClientRect();if(!r.width)return;const old=localStorage.getItem("drawV5");dc.width=Math.round(r.width);dc.height=520;ctx.fillStyle="#fff";ctx.fillRect(0,0,dc.width,dc.height);if(old){const im=new Image();im.onload=()=>ctx.drawImage(im,0,0,dc.width,dc.height);im.src=old}}
+function resizeCanvas(){if(!dc)return;const r=dc.getBoundingClientRect();if(!r.width)return;const old=localStorage.getItem("sharedDrawV1");dc.width=Math.round(r.width);dc.height=520;ctx.fillStyle="#fff";ctx.fillRect(0,0,dc.width,dc.height);if(old){const im=new Image();im.onload=()=>ctx.drawImage(im,0,0,dc.width,dc.height);im.src=old}}
 function setDrawTool(t){tool=t;currentStamp=null;setActiveButtons("",t)}
 function setStamp(s){currentStamp=s;setActiveButtons("","none")}
-function saveCanvas(){try{localStorage.setItem("drawV5",dc.toDataURL())}catch(e){}}
+function saveCanvas(){
+ try{
+  const data=dc.toDataURL();
+  localStorage.setItem("sharedDrawV1",data);
+  if(hdc&&hctx){const im=new Image();im.onload=()=>{hctx.fillStyle="#fff";hctx.fillRect(0,0,hdc.width,hdc.height);hctx.drawImage(im,0,0,hdc.width,hdc.height);};im.src=data}
+ }catch(e){}
+}
 function clearDraw(){undo.push(dc.toDataURL());ctx.fillStyle="#fff";ctx.fillRect(0,0,dc.width,dc.height);saveCanvas()}
 function undoDraw(){const x=undo.pop();if(!x)return;const im=new Image();im.onload=()=>{ctx.fillStyle="#fff";ctx.fillRect(0,0,dc.width,dc.height);ctx.drawImage(im,0,0,dc.width,dc.height);saveCanvas()};im.src=x}
 function downloadDraw(){if(!dc)return;const a=document.createElement("a");a.download="moje-kresba.png";a.href=dc.toDataURL("image/png");a.click()}
@@ -940,6 +964,22 @@ async function installPWA(){
  if(b) b.style.display="none";
 }
 
+
+function refreshSharedDrawing(){
+ const data=localStorage.getItem("sharedDrawV1");
+ if(!data)return;
+ if(hdc&&hctx){
+  const im=new Image();
+  im.onload=()=>{hctx.fillStyle="#fff";hctx.fillRect(0,0,hdc.width,hdc.height);hctx.drawImage(im,0,0,hdc.width,hdc.height)};
+  im.src=data;
+ }
+ if(dc&&ctx){
+  const im2=new Image();
+  im2.onload=()=>{ctx.fillStyle="#fff";ctx.fillRect(0,0,dc.width,dc.height);ctx.drawImage(im2,0,0,dc.width,dc.height)};
+  im2.src=data;
+ }
+}
+document.addEventListener("click",()=>setTimeout(refreshSharedDrawing,60));
 </script>
 </body>
 </html>
