@@ -697,7 +697,7 @@ function openRecipe(id,rerender=true){
 <h2>${r.name}</h2>
 <div class="detailMeta"><span>⏱ Celkem ${r.time} min</span><span>🔪 Příprava ${r.prep||0} min</span><span>♨ ${r.diff}</span><span>🍽 ${r.serv} porce</span></div>
 ${r.kcal?`<div class="sub" style="margin-bottom:10px">${r.kcal}</div>`:""}
-<img class="detailHero" src="${r.hero||r.img}">
+<img class="detailHero" src="${r.img}" alt="${r.name}" onerror="this.onerror=null;this.style.display='none'">
 <div class="detailCols">
   <div>
     <h3>Suroviny</h3>

@@ -1,4 +1,4 @@
-const CACHE="domaci-panel-v11-shared-drawing";
+const CACHE="domaci-panel-v12-recipe-image-fix";
 const SHELL=["./","./index.html","./manifest.json","./icon-192.png","./icon-512.png"];
 
 self.addEventListener("install", event=>{
